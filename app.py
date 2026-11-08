@@ -1,18 +1,18 @@
 
 import streamlit as st
 import time
-import base64
 from io import BytesIO
 from PIL import Image
 from google import genai
+from google.genai import types
 from datetime import datetime
 
-# =====================================================
+# =========================================================
 # 1. CONFIGURATION
-# =====================================================
+# =========================================================
 
 st.set_page_config(
-    page_title="MediCess AI | Healthcare Agent",
+    page_title="MediCess AI | Healthcare Assistant",
     page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -20,9 +20,31 @@ st.set_page_config(
 
 MODEL = "gemini-3.8-flash"
 
-# =====================================================
+MENU = [
+    "🏠 Dashboard",
+    "🩺 Medical Triage",
+    "💊 Drug Safety",
+    "📅 Recovery Planner",
+    "📂 Riwayat Analisis",
+    "ℹ️ Tentang MediCess"
+]
+
+if "selected_page" not in st.session_state:
+    st.session_state.selected_page = "🏠 Dashboard"
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+if "api_client" not in st.session_state:
+    st.session_state.api_client = None
+
+if "client_key" not in st.session_state:
+    st.session_state.client_key = None
+
+
+# =========================================================
 # 2. CUSTOM CSS
-# =====================================================
+# =========================================================
 
 st.markdown("""
 <style>
@@ -31,7 +53,7 @@ st.markdown("""
 .stApp {
     background: #f4f7fb;
     color: #172b4d;
-    font-family: 'Inter', sans-serif;
+    font-family: Arial, sans-serif;
 }
 
 .block-container {
@@ -46,11 +68,11 @@ section[data-testid="stSidebar"] {
 }
 
 section[data-testid="stSidebar"] * {
-    color: #ffffff;
+    color: white;
 }
 
 section[data-testid="stSidebar"] [data-testid="stRadio"] label {
-    padding: 8px 5px;
+    padding: 7px 4px;
 }
 
 /* HERO */
@@ -59,30 +81,31 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label {
     padding: 35px;
     border-radius: 20px;
     color: white;
-    margin-bottom: 25px;
+    margin-bottom: 28px;
     box-shadow: 0 8px 25px rgba(16,43,70,0.12);
 }
 
 .hero h1 {
-    color: white;
+    color: white !important;
     font-size: 36px;
     font-weight: 800;
-    margin-bottom: 8px;
+    margin: 12px 0;
 }
 
 .hero p {
-    color: #d8edf0;
+    color: #d8edf0 !important;
     font-size: 15px;
-    line-height: 1.7;
+    line-height: 1.8;
 }
 
 .hero-tag {
     display: inline-block;
-    background: rgba(255,255,255,0.15);
-    padding: 6px 13px;
+    background: rgba(255,255,255,0.16);
+    color: white;
+    padding: 7px 14px;
     border-radius: 20px;
     font-size: 12px;
-    margin-bottom: 15px;
+    font-weight: bold;
 }
 
 /* SECTION */
@@ -99,31 +122,47 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label {
     margin-bottom: 22px;
 }
 
-/* FEATURE CARDS */
+/* FEATURE CARD */
 .feature-card {
     background: white;
-    padding: 23px;
+    padding: 24px;
     border-radius: 17px;
     border: 1px solid #e5edf5;
-    min-height: 175px;
+    min-height: 180px;
     box-shadow: 0 4px 15px rgba(16,43,70,0.04);
 }
 
 .feature-icon {
-    font-size: 30px;
+    font-size: 32px;
     margin-bottom: 12px;
 }
 
 .feature-card h3 {
-    color: #102b46;
+    color: #102b46 !important;
     font-size: 18px;
-    margin-bottom: 8px;
+    margin-bottom: 9px;
 }
 
 .feature-card p {
-    color: #718096;
+    color: #718096 !important;
     font-size: 13px;
-    line-height: 1.6;
+    line-height: 1.7;
+}
+
+/* BUTTON */
+.stButton > button {
+    background: linear-gradient(120deg, #087f8c, #086b78);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    min-height: 43px;
+    font-weight: 700;
+}
+
+.stButton > button:hover {
+    background: #075d69;
+    color: white;
+    border: none;
 }
 
 /* INPUT */
@@ -133,23 +172,6 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label {
     border: 1px solid #dce6ef;
     border-radius: 10px;
     color: #172b4d;
-}
-
-/* BUTTON */
-.stButton > button {
-    background: linear-gradient(120deg, #087f8c, #086b78);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    min-height: 45px;
-    font-weight: 700;
-    transition: 0.2s;
-}
-
-.stButton > button:hover {
-    background: #075d69;
-    color: white;
-    border: none;
 }
 
 /* CONTAINER */
@@ -173,6 +195,12 @@ div[data-testid="stMetric"] {
     color: #718096;
     font-size: 12px;
     padding: 25px;
+    line-height: 1.8;
+}
+
+.footer h3 {
+    color: #087f8c !important;
+    font-size: 22px;
 }
 
 /* FILE UPLOADER */
@@ -190,108 +218,50 @@ div[data-testid="stMetric"] {
 """, unsafe_allow_html=True)
 
 
-# =====================================================
-# 3. SESSION STATE
-# =====================================================
+# =========================================================
+# 3. NAVIGATION FUNCTION
+# =========================================================
 
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-if "api_client" not in st.session_state:
-    st.session_state.api_client = None
-
-if "client_key" not in st.session_state:
-    st.session_state.client_key = None
+def navigate_to(page):
+    st.session_state.selected_page = page
 
 
-# =====================================================
-# 4. SIDEBAR
-# =====================================================
-
-with st.sidebar:
-
-    st.markdown("""
-    <div style="padding:15px 0 25px 0;">
-        <h2 style="color:white;margin-bottom:0;">
-            🏥 MediCess
-        </h2>
-        <p style="color:#9bbbc9;font-size:12px;">
-            INTELLIGENT HEALTHCARE AGENT
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    st.markdown("### NAVIGATION")
-
-    page = st.radio(
-        "Menu",
-        [
-            "🏠 Dashboard",
-            "🩺 Medical Triage",
-            "💊 Drug Safety",
-            "📅 Recovery Planner",
-            "📂 Riwayat Analisis",
-            "ℹ️ Tentang MediCess"
-        ],
-        label_visibility="collapsed"
-    )
-
-    st.markdown("---")
-
-    st.markdown("### ⚙️ API SETTINGS")
-
-    api_key = st.text_input(
-        "Gemini API Key",
-        type="password",
-        placeholder="Masukkan API Key..."
-    )
-
-    if api_key:
-
-        try:
-            if st.session_state.client_key != api_key:
-
-                st.session_state.api_client = genai.Client(
-                    api_key=api_key
-                )
-
-                st.session_state.client_key = api_key
-
-            st.success("Gemini API Connected")
-
-        except Exception:
-            st.error("Gagal menginisialisasi Gemini.")
-            st.session_state.api_client = None
-
-    else:
-        st.warning("API Key belum dimasukkan.")
-
-    st.markdown("---")
-
-    st.caption("MediCess AI v2.0")
-    st.caption("Powered by Google Gemini")
-
-
-# =====================================================
-# 5. GEMINI CLIENT
-# =====================================================
+# =========================================================
+# 4. GEMINI API CLIENT
+# =========================================================
 
 def get_client():
 
-    client = st.session_state.api_client
+    api_key = st.session_state.get("api_key", "")
 
-    if client is None:
+    if not api_key:
         st.error("Masukkan Gemini API Key pada sidebar.")
         return None
 
-    return client
+    try:
+
+        if (
+            st.session_state.api_client is None
+            or st.session_state.client_key != api_key
+        ):
+
+            st.session_state.api_client = genai.Client(
+                api_key=api_key
+            )
+
+            st.session_state.client_key = api_key
+
+        return st.session_state.api_client
+
+    except Exception as error:
+
+        st.error(f"Gagal menghubungkan Gemini API: {error}")
+        return None
 
 
-# =====================================================
-# 6. AI GENERATION WITH STREAMING
-# =====================================================
+# =========================================================
+# 5. AI GENERATION WITH STREAMING
+# =========================================================
 
 def generate_ai(prompt, uploaded_image=None):
 
@@ -300,9 +270,9 @@ def generate_ai(prompt, uploaded_image=None):
     if client is None:
         return None, 0
 
-    input_data = prompt
+    contents = [prompt]
 
-    # IMAGE OPTIMIZATION
+    # IMAGE PROCESSING
     if uploaded_image is not None:
 
         image = Image.open(
@@ -311,82 +281,56 @@ def generate_ai(prompt, uploaded_image=None):
 
         image.thumbnail((1024, 1024))
 
-        buffer = BytesIO()
+        contents.append(image)
 
-        image.save(
-            buffer,
-            format="JPEG",
-            quality=80,
-            optimize=True
-        )
-
-        image_base64 = base64.b64encode(
-            buffer.getvalue()
-        ).decode("utf-8")
-
-        input_data = [
-            {
-                "type": "text",
-                "text": prompt
-            },
-            {
-                "type": "image",
-                "data": image_base64,
-                "mime_type": "image/jpeg"
-            }
-        ]
-
-    # STREAMING RESPONSE
     start_time = time.time()
 
     response_placeholder = st.empty()
-
     full_response = ""
 
-    stream = client.interactions.create(
-        model=MODEL,
-        input=input_data,
-        generation_config={
-            "thinking_level": "low",
-            "max_output_tokens": 700
-        },
-        stream=True
-    )
+    try:
 
-    for event in stream:
-
-        if event.event_type == "step.delta":
-
-            text_delta = getattr(
-                event.delta,
-                "text",
-                None
+        stream = client.models.generate_content_stream(
+            model=MODEL,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                max_output_tokens=800
             )
+        )
 
-            if text_delta:
+        for chunk in stream:
 
-                full_response += text_delta
+            text_chunk = chunk.text
+
+            if text_chunk:
+
+                full_response += text_chunk
 
                 response_placeholder.markdown(
                     full_response + " ▌"
                 )
 
-    elapsed = time.time() - start_time
+        elapsed = time.time() - start_time
 
-    if not full_response.strip():
+        if not full_response.strip():
 
-        raise RuntimeError(
-            "Gemini tidak menghasilkan jawaban teks."
-        )
+            raise RuntimeError(
+                "Gemini tidak memberikan jawaban teks."
+            )
 
-    response_placeholder.markdown(full_response)
+        response_placeholder.markdown(full_response)
 
-    return full_response, elapsed
+        return full_response, elapsed
+
+    except Exception:
+
+        response_placeholder.empty()
+        raise
 
 
-# =====================================================
-# 7. SAVE HISTORY
-# =====================================================
+# =========================================================
+# 6. HISTORY FUNCTION
+# =========================================================
 
 def save_history(feature, question, answer, elapsed):
 
@@ -404,9 +348,9 @@ def save_history(feature, question, answer, elapsed):
     )
 
 
-# =====================================================
-# 8. RESULT DISPLAY
-# =====================================================
+# =========================================================
+# 7. RESULT DISPLAY
+# =========================================================
 
 def display_result(result, elapsed, filename):
 
@@ -419,7 +363,6 @@ def display_result(result, elapsed, filename):
     with st.container(border=True):
 
         st.markdown("### 📋 Hasil Analisis")
-
         st.markdown(result)
 
     st.download_button(
@@ -430,12 +373,78 @@ def display_result(result, elapsed, filename):
     )
 
 
-# =====================================================
-# 9. DASHBOARD
-# =====================================================
+# =========================================================
+# 8. SIDEBAR
+# =========================================================
+
+with st.sidebar:
+
+    st.markdown("""
+    <div style="padding:15px 0 25px 0;">
+        <h2 style="color:white;margin-bottom:0;">
+            🏥 MediCess AI
+        </h2>
+        <p style="color:#a9c5d2;font-size:11px;">
+            INTELLIGENT HEALTHCARE AGENT
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### NAVIGATION")
+
+    st.radio(
+        "Menu",
+        MENU,
+        key="selected_page",
+        label_visibility="collapsed"
+    )
+
+    st.markdown("---")
+    st.markdown("### ⚙️ API SETTINGS")
+
+    try:
+        default_api_key = st.secrets.get(
+            "GEMINI_API_KEY", ""
+        )
+    except Exception:
+        default_api_key = ""
+
+    st.text_input(
+        "Gemini API Key",
+        type="password",
+        value=default_api_key,
+        key="api_key",
+        placeholder="Masukkan API Key..."
+    )
+
+    if st.session_state.get("api_key"):
+
+        st.success("API Key tersedia")
+
+    else:
+
+        st.warning("API Key belum dimasukkan.")
+
+    st.markdown("---")
+    st.caption("MediCess AI v2.1")
+    st.caption("Powered by Google Gemini")
+
+
+# =========================================================
+# 9. CURRENT PAGE
+# =========================================================
+
+page = st.session_state.selected_page
+
+
+# =========================================================
+# 10. DASHBOARD
+# =========================================================
 
 if page == "🏠 Dashboard":
 
+    # HERO
     st.markdown("""
     <div class="hero">
 
@@ -454,18 +463,18 @@ if page == "🏠 Dashboard":
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown(
-        '<div class="section-title">Healthcare Services</div>',
-        unsafe_allow_html=True
-    )
+    # SECTION TITLE
+    st.markdown("""
+    <div class="section-title">
+        Healthcare Services
+    </div>
 
-    st.markdown(
-        '<div class="section-desc">'
-        'Pilih layanan kesehatan yang ingin kamu gunakan.'
-        '</div>',
-        unsafe_allow_html=True
-    )
+    <div class="section-desc">
+        Pilih layanan kesehatan yang ingin kamu gunakan.
+    </div>
+    """, unsafe_allow_html=True)
 
+    # FEATURE CARDS
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -481,6 +490,14 @@ if page == "🏠 Dashboard":
         </div>
         """, unsafe_allow_html=True)
 
+        st.button(
+            "Buka Medical Triage",
+            key="btn_triage",
+            use_container_width=True,
+            on_click=navigate_to,
+            args=("🩺 Medical Triage",)
+        )
+
     with col2:
 
         st.markdown("""
@@ -493,6 +510,14 @@ if page == "🏠 Dashboard":
             </p>
         </div>
         """, unsafe_allow_html=True)
+
+        st.button(
+            "Buka Drug Safety",
+            key="btn_drug",
+            use_container_width=True,
+            on_click=navigate_to,
+            args=("💊 Drug Safety",)
+        )
 
     with col3:
 
@@ -507,19 +532,30 @@ if page == "🏠 Dashboard":
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("")
+        st.button(
+            "Buka Recovery Planner",
+            key="btn_recovery",
+            use_container_width=True,
+            on_click=navigate_to,
+            args=("📅 Recovery Planner",)
+        )
 
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # OVERVIEW
     st.markdown("### 📊 Dashboard Overview")
 
     col1, col2 = st.columns(2)
 
     with col1:
+
         st.metric(
             "Total Analisis Sesi Ini",
             len(st.session_state.history)
         )
 
     with col2:
+
         st.metric(
             "Healthcare AI Features",
             "3"
@@ -527,6 +563,7 @@ if page == "🏠 Dashboard":
 
     st.markdown("---")
 
+    # NOTICE
     st.markdown("### 🛡️ Medical Information Notice")
 
     st.info(
@@ -536,9 +573,9 @@ if page == "🏠 Dashboard":
     )
 
 
-# =====================================================
-# 10. FEATURE 1 - MEDICAL TRIAGE
-# =====================================================
+# =========================================================
+# 11. FEATURE 1 - MEDICAL TRIAGE
+# =========================================================
 
 elif page == "🩺 Medical Triage":
 
@@ -547,8 +584,7 @@ elif page == "🩺 Medical Triage":
         <span class="hero-tag">FEATURE 01</span>
         <h1>🩺 AI Medical Triage</h1>
         <p>
-            Intelligent Symptom & Visual Analysis
-            <br>
+            Intelligent Symptom & Visual Analysis<br>
             Analisis keluhan kesehatan dan foto kondisi fisik.
         </p>
     </div>
@@ -558,38 +594,31 @@ elif page == "🩺 Medical Triage":
 
         st.markdown("### Informasi Keluhan")
 
-        col1, col2 = st.columns(2)
+        keluhan = st.text_area(
+            "Deskripsikan keluhan kesehatan:",
+            placeholder=(
+                "Contoh: Ruam merah di tangan, "
+                "terasa gatal sejak kemarin..."
+            ),
+            height=150
+        )
 
-        with col1:
+        foto = st.file_uploader(
+            "Unggah foto kondisi fisik (opsional):",
+            type=["png", "jpg", "jpeg"],
+            key="triage_upload"
+        )
 
-            keluhan_text = st.text_area(
-                "Deskripsikan keluhan kesehatan:",
-                placeholder=(
-                    "Contoh: Ruam merah di tangan, "
-                    "terasa gatal sejak kemarin..."
-                ),
-                height=160
+        if foto:
+
+            st.image(
+                foto,
+                caption="Foto kondisi fisik",
+                use_container_width=True
             )
-
-        with col2:
-
-            uploaded_image = st.file_uploader(
-                "Unggah foto kondisi fisik (opsional):",
-                type=["png", "jpg", "jpeg"],
-                key="triage_image"
-            )
-
-            if uploaded_image:
-
-                st.image(
-                    uploaded_image,
-                    caption="Foto kondisi fisik",
-                    use_container_width=True
-                )
 
         st.caption(
-            "Hindari mengunggah foto yang memuat informasi "
-            "identitas pribadi."
+            "Hindari mengunggah foto yang memuat informasi identitas pribadi."
         )
 
         if st.button(
@@ -598,7 +627,7 @@ elif page == "🩺 Medical Triage":
             use_container_width=True
         ):
 
-            if not keluhan_text.strip() and uploaded_image is None:
+            if not keluhan.strip() and foto is None:
 
                 st.warning(
                     "Masukkan keluhan atau unggah foto terlebih dahulu."
@@ -610,7 +639,7 @@ elif page == "🩺 Medical Triage":
 Kamu adalah MediCess AI, asisten informasi kesehatan.
 
 Keluhan pasien:
-{keluhan_text if keluhan_text.strip() else "Tidak ada deskripsi teks."}
+{keluhan if keluhan.strip() else "Tidak ada deskripsi teks."}
 
 Jika foto tersedia, gunakan sebagai informasi pendukung.
 
@@ -627,15 +656,13 @@ Berikan hasil dengan struktur:
 5. REKOMENDASI TENAGA MEDIS
 6. TANDA BAHAYA
 
-Jika ditemukan tanda kondisi darurat,
+Jika terdapat tanda kondisi darurat,
 arahkan pasien segera ke IGD.
 
 Jangan memastikan diagnosis hanya berdasarkan foto.
 Jangan mengarang informasi medis.
 
-Gunakan bahasa Indonesia yang sederhana,
-ringkas, dan mudah dipahami.
-
+Gunakan bahasa Indonesia yang sederhana dan mudah dipahami.
 Akhiri dengan disclaimer medis.
 """
 
@@ -647,14 +674,14 @@ Akhiri dengan disclaimer medis.
 
                         result, elapsed = generate_ai(
                             prompt,
-                            uploaded_image
+                            foto
                         )
 
                     if result:
 
                         save_history(
                             "Medical Triage",
-                            keluhan_text or "Analisis foto gejala",
+                            keluhan or "Analisis foto kondisi fisik",
                             result,
                             elapsed
                         )
@@ -665,16 +692,16 @@ Akhiri dengan disclaimer medis.
                             "medicess_medical_triage.txt"
                         )
 
-                except Exception as e:
+                except Exception as error:
 
                     st.error(
-                        f"Terjadi kesalahan saat analisis: {e}"
+                        f"Terjadi kesalahan saat analisis: {error}"
                     )
 
 
-# =====================================================
-# 11. FEATURE 2 - DRUG SAFETY
-# =====================================================
+# =========================================================
+# 12. FEATURE 2 - DRUG SAFETY
+# =========================================================
 
 elif page == "💊 Drug Safety":
 
@@ -683,8 +710,7 @@ elif page == "💊 Drug Safety":
         <span class="hero-tag">FEATURE 02</span>
         <h1>💊 Medication Safety Checker</h1>
         <p>
-            Drug Interaction & Safety Analysis
-            <br>
+            Drug Interaction & Safety Analysis<br>
             Membantu memahami potensi risiko penggunaan obat.
         </p>
     </div>
@@ -705,7 +731,7 @@ elif page == "💊 Drug Safety":
             height=150
         )
 
-        riwayat_alergi = st.text_input(
+        alergi = st.text_input(
             "Riwayat alergi atau kondisi medis:",
             placeholder=(
                 "Contoh: Alergi penisilin, "
@@ -727,14 +753,14 @@ elif page == "💊 Drug Safety":
 
             else:
 
-                prompt_obat = f"""
+                prompt = f"""
 Kamu adalah MediCess Drug Safety Agent.
 
 Daftar obat:
 {daftar_obat}
 
 Riwayat alergi dan kondisi medis:
-{riwayat_alergi if riwayat_alergi.strip() else "Tidak diberikan."}
+{alergi if alergi.strip() else "Tidak diberikan."}
 
 Analisis dengan struktur:
 
@@ -763,9 +789,7 @@ Akhiri dengan disclaimer medis.
                         "MediCess sedang mengevaluasi keamanan obat..."
                     ):
 
-                        result, elapsed = generate_ai(
-                            prompt_obat
-                        )
+                        result, elapsed = generate_ai(prompt)
 
                     if result:
 
@@ -782,16 +806,16 @@ Akhiri dengan disclaimer medis.
                             "medicess_drug_safety.txt"
                         )
 
-                except Exception as e:
+                except Exception as error:
 
                     st.error(
-                        f"Terjadi kesalahan: {e}"
+                        f"Terjadi kesalahan: {error}"
                     )
 
 
-# =====================================================
-# 12. FEATURE 3 - RECOVERY PLANNER
-# =====================================================
+# =========================================================
+# 13. FEATURE 3 - RECOVERY PLANNER
+# =========================================================
 
 elif page == "📅 Recovery Planner":
 
@@ -800,8 +824,7 @@ elif page == "📅 Recovery Planner":
         <span class="hero-tag">FEATURE 03</span>
         <h1>📅 Personal Recovery Planner</h1>
         <p>
-            Intelligent Lifestyle & Recovery Planning
-            <br>
+            Intelligent Lifestyle & Recovery Planning<br>
             Panduan aktivitas dan pemulihan berdasarkan kondisi kesehatan.
         </p>
     </div>
@@ -811,13 +834,13 @@ elif page == "📅 Recovery Planner":
 
         st.markdown("### Informasi Kondisi Pasien")
 
-        kondisi_pasien = st.text_area(
+        kondisi = st.text_area(
             "Kondisi kesehatan atau pemulihan:",
             placeholder=(
                 "Contoh: Sedang dalam pemulihan demam, "
                 "hari ketiga setelah sakit..."
             ),
-            height=130
+            height=140
         )
 
         if st.button(
@@ -826,7 +849,7 @@ elif page == "📅 Recovery Planner":
             use_container_width=True
         ):
 
-            if not kondisi_pasien.strip():
+            if not kondisi.strip():
 
                 st.warning(
                     "Masukkan kondisi kesehatan terlebih dahulu."
@@ -834,11 +857,11 @@ elif page == "📅 Recovery Planner":
 
             else:
 
-                prompt_plan = f"""
+                prompt = f"""
 Kamu adalah MediCess Recovery Planning Agent.
 
 Kondisi pasien:
-{kondisi_pasien}
+{kondisi}
 
 Buat panduan pemulihan harian dengan struktur:
 
@@ -860,8 +883,7 @@ Jangan memberikan dosis obat personal.
 Jangan menggantikan instruksi dokter.
 Jika kondisi berisiko tinggi, utamakan pemeriksaan medis.
 
-Gunakan bahasa Indonesia yang sederhana,
-ringkas, dan mudah dipahami.
+Gunakan bahasa Indonesia sederhana dan mudah dipahami.
 """
 
                 try:
@@ -870,15 +892,13 @@ ringkas, dan mudah dipahami.
                         "MediCess sedang menyusun rencana pemulihan..."
                     ):
 
-                        result, elapsed = generate_ai(
-                            prompt_plan
-                        )
+                        result, elapsed = generate_ai(prompt)
 
                     if result:
 
                         save_history(
                             "Recovery Planner",
-                            kondisi_pasien,
+                            kondisi,
                             result,
                             elapsed
                         )
@@ -889,16 +909,16 @@ ringkas, dan mudah dipahami.
                             "medicess_recovery_plan.txt"
                         )
 
-                except Exception as e:
+                except Exception as error:
 
                     st.error(
-                        f"Terjadi kesalahan: {e}"
+                        f"Terjadi kesalahan: {error}"
                     )
 
 
-# =====================================================
-# 13. ANALYSIS HISTORY
-# =====================================================
+# =========================================================
+# 14. ANALYSIS HISTORY
+# =========================================================
 
 elif page == "📂 Riwayat Analisis":
 
@@ -931,7 +951,6 @@ elif page == "📂 Riwayat Analisis":
         if st.button("🗑️ Hapus Semua Riwayat"):
 
             st.session_state.history = []
-
             st.rerun()
 
         for index, item in enumerate(history):
@@ -949,7 +968,6 @@ elif page == "📂 Riwayat Analisis":
                 )
 
                 st.markdown("---")
-
                 st.markdown(item["answer"])
 
                 st.download_button(
@@ -961,9 +979,9 @@ elif page == "📂 Riwayat Analisis":
                 )
 
 
-# =====================================================
-# 14. ABOUT PAGE
-# =====================================================
+# =========================================================
+# 15. ABOUT MEDICESS
+# =========================================================
 
 elif page == "ℹ️ Tentang MediCess":
 
@@ -972,8 +990,7 @@ elif page == "ℹ️ Tentang MediCess":
         <span class="hero-tag">ABOUT THE PROJECT</span>
         <h1>🏥 About MediCess AI</h1>
         <p>
-            Intelligent Healthcare Agent
-            <br>
+            Intelligent Healthcare Agent<br>
             Artificial Intelligence for Healthcare Information.
         </p>
     </div>
@@ -996,7 +1013,6 @@ elif page == "ℹ️ Tentang MediCess":
     col1, col2 = st.columns(2)
 
     with col1:
-
         st.markdown("""
         - Python
         - Streamlit
@@ -1004,7 +1020,6 @@ elif page == "ℹ️ Tentang MediCess":
         """)
 
     with col2:
-
         st.markdown("""
         - Google Gen AI SDK
         - Pillow
@@ -1013,19 +1028,25 @@ elif page == "ℹ️ Tentang MediCess":
 
     st.markdown("### Fitur Utama")
 
-    st.markdown("""
-    **F1 – Medical Triage**
+    with st.container(border=True):
 
-    Analisis keluhan kesehatan dan foto kondisi fisik.
+        st.markdown("""
+        **F1 – Medical Triage**
 
-    **F2 – Drug Safety**
+        Analisis keluhan kesehatan dan foto kondisi fisik.
 
-    Analisis awal potensi interaksi dan risiko obat.
+        ---
 
-    **F3 – Recovery Planner**
+        **F2 – Drug Safety**
 
-    Pembuatan panduan aktivitas dan pemulihan.
-    """)
+        Analisis awal potensi interaksi dan risiko obat.
+
+        ---
+
+        **F3 – Recovery Planner**
+
+        Pembuatan panduan aktivitas dan pemulihan.
+        """)
 
     st.info(
         "MediCess AI merupakan proyek asisten informasi kesehatan, "
@@ -1033,28 +1054,22 @@ elif page == "ℹ️ Tentang MediCess":
     )
 
 
-# =====================================================
-# 15. FOOTER
-# =====================================================
+# =========================================================
+# 16. FOOTER
+# =========================================================
 
 st.markdown("---")
 
 st.markdown("""
 <div class="footer">
 
-    <h3 style="color:#087f8c;">🏥 MediCess AI</h3>
+    <h3>🏥 MediCess AI</h3>
 
-    <p>
-        Intelligent Healthcare Agent
-    </p>
+    <p>Intelligent Healthcare Agent</p>
 
-    <p>
-        Powered by Google Gemini
-    </p>
+    <p>Powered by Google Gemini</p>
 
-    <p>
-        © 2026 MediCess AI. All Rights Reserved.
-    </p>
+    <p>© 2026 MediCess AI. All Rights Reserved.</p>
 
     <small>
         Informasi AI bukan pengganti diagnosis dan konsultasi
