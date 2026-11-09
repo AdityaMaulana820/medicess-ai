@@ -21,7 +21,7 @@ from sklearn.metrics import (
 # 1. MEMBACA DATASET
 # ==========================================
 
-DATA_PATH = "data/Symptom2Disease.csv"
+DATA_PATH = "Symptom2Disease.csv"
 
 df = pd.read_csv(DATA_PATH)
 
