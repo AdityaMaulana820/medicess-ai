@@ -5,17 +5,17 @@ from PIL import Image
 from datetime import datetime
 
 # =====================================================
-# KONFIGURASI
+# KONFIGURASI APLIKASI
 # =====================================================
 
 st.set_page_config(
     page_title="MediCess AI",
     page_icon="🏥",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 MODEL = "gemini-3.8-flash"
+
 
 # =====================================================
 # SESSION STATE
@@ -35,341 +35,29 @@ if "client_key" not in st.session_state:
 
 
 # =====================================================
-# CSS GLOBAL
+# PROMPT KEAMANAN MEDIS
 # =====================================================
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+MEDICAL_SAFETY = """
+Anda adalah MediCess AI, asisten informasi kesehatan berbasis AI.
 
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
-}
-
-.stApp {
-    background: #f5f8fc;
-}
-
-[data-testid="stSidebar"] {
-    background: #102b46;
-}
-
-[data-testid="stSidebar"] * {
-    color: #ffffff;
-}
-
-[data-testid="stSidebar"] [data-testid="stRadio"] label {
-    color: #ffffff;
-}
-
-h1, h2, h3 {
-    color: #102b46;
-}
-
-.stButton > button {
-    border-radius: 10px;
-    border: none;
-    background: #087f8c;
-    color: white;
-    font-weight: 600;
-    padding: 10px 18px;
-    transition: 0.2s;
-}
-
-.stButton > button:hover {
-    background: #066b75;
-    color: white;
-    border: none;
-}
-
-.stTextInput input,
-.stTextArea textarea {
-    border-radius: 10px;
-}
-
-div[data-testid="stFileUploader"] {
-    border-radius: 12px;
-}
-
-div[data-testid="stAlert"] {
-    border-radius: 12px;
-}
-
-hr {
-    border-color: #e2e8f0;
-}
-</style>
-""", unsafe_allow_html=True)
+Aturan:
+1. Anda bukan dokter dan tidak boleh mengaku sebagai dokter.
+2. Jangan memberikan diagnosis pasti.
+3. Berikan informasi untuk tujuan edukasi.
+4. Jangan mengarang fakta medis.
+5. Jika informasi tidak cukup, jelaskan keterbatasannya.
+6. Jangan menyarankan menghentikan obat resep tanpa arahan dokter.
+7. Jangan memberikan dosis obat personal.
+8. Jika terdapat gejala darurat seperti sesak napas berat,
+   nyeri dada berat, penurunan kesadaran, kejang, perdarahan berat,
+   atau gejala stroke, sarankan segera mencari pertolongan medis darurat.
+9. Gunakan bahasa Indonesia yang mudah dipahami.
+"""
 
 
 # =====================================================
-# HERO
-# =====================================================
-
-def show_hero():
-
-    st.html("""
-    <div style="
-        background: linear-gradient(120deg, #102b46, #087f8c);
-        padding: 42px;
-        border-radius: 22px;
-        color: white;
-        margin-bottom: 25px;
-        box-shadow: 0 8px 25px rgba(16,43,70,0.12);
-    ">
-
-        <span style="
-            display: inline-block;
-            background: rgba(255,255,255,0.17);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 1px;
-        ">
-            ✦ AI HEALTHCARE PLATFORM
-        </span>
-
-        <h1 style="
-            color: #ffffff !important;
-            font-size: 38px;
-            font-weight: 800;
-            margin: 20px 0 12px 0;
-        ">
-            Welcome to MediCess AI
-        </h1>
-
-        <p style="
-            color: #e0f2f3 !important;
-            font-size: 16px;
-            line-height: 1.8;
-            margin-bottom: 0;
-        ">
-            Your Health, Smarter.<br>
-            Asisten informasi kesehatan berbasis Artificial Intelligence
-            untuk membantu memahami informasi kesehatan secara lebih mudah.
-        </p>
-
-    </div>
-    """)
-
-
-# =====================================================
-# WELCOME SECTION
-# =====================================================
-
-def show_welcome():
-
-    st.html("""
-    <div style="
-        margin: 30px 0 20px 0;
-        background: #ffffff;
-        padding: 22px 25px;
-        border-radius: 15px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 12px rgba(16,43,70,0.03);
-    ">
-
-        <h2 style="
-            color: #102b46 !important;
-            font-size: 25px;
-            font-weight: 800;
-            margin: 0 0 10px 0;
-        ">
-            Selamat Datang 👋
-        </h2>
-
-        <p style="
-            color: #475569 !important;
-            font-size: 15px;
-            line-height: 1.8;
-            margin: 0;
-        ">
-            MediCess AI membantu Anda memahami informasi kesehatan
-            melalui teknologi Artificial Intelligence.
-        </p>
-
-    </div>
-    """)
-
-
-# =====================================================
-# FEATURE CARDS
-# =====================================================
-
-def show_feature_cards():
-
-    st.html("""
-    <div style="
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-        gap: 16px;
-        margin: 15px 0 20px 0;
-    ">
-
-        <div style="
-            background: #ffffff;
-            padding: 23px;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 14px rgba(16,43,70,0.04);
-        ">
-            <div style="font-size: 30px;">🩺</div>
-
-            <h3 style="
-                color: #102b46 !important;
-                font-size: 18px;
-                font-weight: 700;
-            ">
-                Medical Triage
-            </h3>
-
-            <p style="
-                color: #475569 !important;
-                font-size: 13px;
-                line-height: 1.7;
-            ">
-                Membantu memahami keluhan dan tingkat urgensi gejala.
-            </p>
-        </div>
-
-        <div style="
-            background: #ffffff;
-            padding: 23px;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 14px rgba(16,43,70,0.04);
-        ">
-            <div style="font-size: 30px;">💊</div>
-
-            <h3 style="
-                color: #102b46 !important;
-                font-size: 18px;
-                font-weight: 700;
-            ">
-                Drug Safety
-            </h3>
-
-            <p style="
-                color: #475569 !important;
-                font-size: 13px;
-                line-height: 1.7;
-            ">
-                Informasi umum mengenai obat, alergi, dan hal yang perlu
-                ditanyakan kepada apoteker.
-            </p>
-        </div>
-
-        <div style="
-            background: #ffffff;
-            padding: 23px;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 14px rgba(16,43,70,0.04);
-        ">
-            <div style="font-size: 30px;">🌿</div>
-
-            <h3 style="
-                color: #102b46 !important;
-                font-size: 18px;
-                font-weight: 700;
-            ">
-                Recovery Planner
-            </h3>
-
-            <p style="
-                color: #475569 !important;
-                font-size: 13px;
-                line-height: 1.7;
-            ">
-                Saran umum mengenai istirahat, aktivitas, dan kebiasaan sehat.
-            </p>
-        </div>
-
-    </div>
-    """)
-
-
-# =====================================================
-# MULAI MENGGUNAKAN FITUR
-# =====================================================
-
-def show_start_section():
-
-    st.html("""
-    <div style="
-        margin: 30px 0 15px 0;
-        background: #ffffff;
-        padding: 22px 25px;
-        border-radius: 15px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 12px rgba(16,43,70,0.03);
-    ">
-
-        <h2 style="
-            color: #102b46 !important;
-            font-size: 23px;
-            font-weight: 800;
-            margin: 0 0 10px 0;
-        ">
-            Mulai Menggunakan Fitur
-        </h2>
-
-        <p style="
-            color: #475569 !important;
-            font-size: 14px;
-            margin: 0;
-            line-height: 1.7;
-        ">
-            Pilih layanan MediCess AI sesuai kebutuhan Anda.
-        </p>
-
-    </div>
-    """)
-
-
-# =====================================================
-# FOOTER
-# =====================================================
-
-def show_footer():
-
-    st.divider()
-
-    st.html("""
-    <div style="
-        text-align: center;
-        color: #475569;
-        font-size: 13px;
-        padding: 22px 10px;
-        line-height: 1.8;
-    ">
-
-        <h3 style="
-            color: #087f8c !important;
-            font-size: 22px;
-            margin-bottom: 5px;
-        ">
-            🏥 MediCess AI
-        </h3>
-
-        <p>Intelligent Healthcare Assistant</p>
-        <p>Powered by Google Gemini</p>
-        <p>© 2026 MediCess AI. All Rights Reserved.</p>
-
-        <small>
-            Informasi dari AI bukan pengganti diagnosis,
-            pemeriksaan, atau konsultasi dengan dokter
-            dan tenaga kesehatan profesional.
-        </small>
-
-    </div>
-    """)
-
-
-# =====================================================
-# GEMINI CLIENT
+# GEMINI API
 # =====================================================
 
 def get_client():
@@ -399,7 +87,7 @@ def get_client():
 
 
 # =====================================================
-# GENERATE AI STREAMING
+# FUNGSI GENERATE AI
 # =====================================================
 
 def generate_ai(prompt, uploaded_image=None, feature_name="MediCess AI"):
@@ -408,10 +96,11 @@ def generate_ai(prompt, uploaded_image=None, feature_name="MediCess AI"):
 
     if client is None:
         st.error("API Key Gemini belum diisi.")
-        return None
+        return
 
     contents = [prompt]
 
+    # Jika pengguna mengunggah gambar
     if uploaded_image is not None:
 
         try:
@@ -421,30 +110,32 @@ def generate_ai(prompt, uploaded_image=None, feature_name="MediCess AI"):
 
         except Exception as e:
             st.error(f"Gagal membaca gambar: {e}")
-            return None
+            return
 
     response_placeholder = st.empty()
     full_response = ""
 
     try:
 
-        stream = client.models.generate_content_stream(
-            model=MODEL,
-            contents=contents
-        )
+        with st.spinner("MediCess AI sedang memproses..."):
 
-        for chunk in stream:
+            stream = client.models.generate_content_stream(
+                model=MODEL,
+                contents=contents
+            )
 
-            if chunk.text:
+            for chunk in stream:
 
-                full_response += chunk.text
+                if chunk.text:
+                    full_response += chunk.text
 
-                response_placeholder.markdown(
-                    full_response + " ▌"
-                )
+                    response_placeholder.markdown(
+                        full_response + " ▌"
+                    )
 
         response_placeholder.markdown(full_response)
 
+        # Simpan riwayat
         if full_response.strip():
 
             st.session_state.history.insert(0, {
@@ -454,37 +145,10 @@ def generate_ai(prompt, uploaded_image=None, feature_name="MediCess AI"):
                 "response": full_response
             })
 
-        return full_response
-
     except Exception as e:
 
-        st.error("Terjadi kesalahan ketika menghubungi Gemini API.")
+        st.error("Terjadi kesalahan saat menghubungi Gemini API.")
         st.code(str(e))
-
-        return None
-
-
-# =====================================================
-# PROMPT KEAMANAN MEDIS
-# =====================================================
-
-MEDICAL_SAFETY = """
-Anda adalah asisten informasi kesehatan berbasis AI bernama MediCess AI.
-
-Aturan penting:
-
-1. Anda bukan dokter dan tidak boleh mengaku sebagai dokter.
-2. Jangan memberikan diagnosis pasti.
-3. Informasi bersifat edukasi, bukan pengganti pemeriksaan medis.
-4. Jangan mengarang fakta medis.
-5. Jika informasi tidak cukup, katakan bahwa informasi belum cukup.
-6. Jangan menyarankan pengguna menghentikan obat resep tanpa arahan dokter.
-7. Jangan memberikan dosis obat personal.
-8. Jika terdapat tanda darurat seperti sesak napas berat, nyeri dada berat,
-   penurunan kesadaran, kejang, perdarahan berat, atau gejala stroke,
-   sarankan segera mencari pertolongan medis darurat.
-9. Gunakan bahasa Indonesia yang jelas dan mudah dipahami.
-"""
 
 
 # =====================================================
@@ -493,24 +157,13 @@ Aturan penting:
 
 with st.sidebar:
 
-    st.markdown("""
-    <div style="text-align:center; padding:15px 5px 25px 5px;">
+    st.title("🏥 MediCess AI")
 
-        <div style="font-size:42px;">🏥</div>
+    st.caption("Intelligent Healthcare Assistant")
 
-        <h2 style="color:white; margin:5px 0;">
-            MediCess AI
-        </h2>
+    st.divider()
 
-        <p style="color:#b8d5e2; font-size:12px;">
-            Intelligent Healthcare Assistant
-        </p>
-
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("### MENU UTAMA")
+    st.subheader("Menu Utama")
 
     pages = [
         "Dashboard",
@@ -521,32 +174,33 @@ with st.sidebar:
         "About"
     ]
 
-    selected = st.radio(
-        "Navigasi",
+    selected_page = st.radio(
+        "Pilih halaman",
         pages,
-        index=pages.index(st.session_state.selected_page)
-        if st.session_state.selected_page in pages else 0,
+        index=pages.index(st.session_state.selected_page),
         label_visibility="collapsed"
     )
 
-    st.session_state.selected_page = selected
+    st.session_state.selected_page = selected_page
 
-    st.markdown("---")
-    st.markdown("### ⚙️ API Configuration")
+    st.divider()
+
+    st.subheader("Pengaturan API")
 
     st.text_input(
         "Gemini API Key",
         type="password",
         key="api_key",
-        placeholder="Masukkan API Key..."
+        placeholder="Masukkan API Key"
     )
 
     st.caption(
-        "API Key digunakan untuk menghubungkan aplikasi ke Gemini."
+        "API Key digunakan untuk menghubungkan aplikasi dengan Gemini."
     )
 
-    st.markdown("---")
-    st.caption("MediCess AI • Version 1.0")
+    st.divider()
+
+    st.caption("MediCess AI Version 1.0")
 
 
 # =====================================================
@@ -555,49 +209,77 @@ with st.sidebar:
 
 if st.session_state.selected_page == "Dashboard":
 
-    show_hero()
+    st.title("🏥 Welcome to MediCess AI")
 
-    show_welcome()
+    st.subheader("Your Health, Smarter.")
 
-    show_feature_cards()
+    st.write(
+        "MediCess AI merupakan asisten informasi kesehatan "
+        "berbasis Artificial Intelligence untuk membantu "
+        "memahami informasi kesehatan secara lebih mudah."
+    )
 
-    show_start_section()
+    st.divider()
+
+    st.header("Selamat Datang 👋")
+
+    st.write(
+        "MediCess AI membantu Anda memahami informasi kesehatan "
+        "melalui teknologi Artificial Intelligence."
+    )
+
+    st.divider()
+
+    st.header("Fitur Utama")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
+        st.subheader("🩺 Medical Triage")
+        st.write(
+            "Membantu memahami keluhan dan informasi tingkat urgensi gejala."
+        )
 
-        if st.button(
-            "🩺 Medical Triage",
-            use_container_width=True
-        ):
+    with col2:
+        st.subheader("💊 Drug Safety")
+        st.write(
+            "Memberikan informasi umum mengenai obat dan hal yang perlu diperhatikan."
+        )
 
+    with col3:
+        st.subheader("🌿 Recovery Planner")
+        st.write(
+            "Membantu menyusun rencana kebiasaan sehat dan pemulihan umum."
+        )
+
+    st.divider()
+
+    st.header("Mulai Menggunakan Fitur")
+
+    st.write("Pilih layanan MediCess AI sesuai kebutuhan Anda.")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("🩺 Medical Triage", use_container_width=True):
             st.session_state.selected_page = "Medical Triage"
             st.rerun()
 
     with col2:
-
-        if st.button(
-            "💊 Drug Safety",
-            use_container_width=True
-        ):
-
+        if st.button("💊 Drug Safety", use_container_width=True):
             st.session_state.selected_page = "Drug Safety"
             st.rerun()
 
     with col3:
-
-        if st.button(
-            "🌿 Recovery Planner",
-            use_container_width=True
-        ):
-
+        if st.button("🌿 Recovery Planner", use_container_width=True):
             st.session_state.selected_page = "Recovery Planner"
             st.rerun()
 
+    st.divider()
+
     st.info(
-        "MediCess AI merupakan alat bantu informasi kesehatan, "
-        "bukan sistem diagnosis atau pengganti tenaga medis."
+        "MediCess AI adalah alat bantu informasi kesehatan, "
+        "bukan pengganti diagnosis dan konsultasi dengan dokter."
     )
 
 
@@ -610,19 +292,22 @@ elif st.session_state.selected_page == "Medical Triage":
     st.title("🩺 Medical Triage")
 
     st.write(
-        "Ceritakan keluhan yang sedang Anda alami."
+        "Masukkan keluhan yang sedang Anda alami untuk mendapatkan "
+        "informasi kesehatan dari MediCess AI."
     )
+
+    st.divider()
 
     with st.form("triage_form"):
 
         symptoms = st.text_area(
-            "Apa gejala atau keluhan yang Anda alami?",
-            placeholder="Contoh: Saya mengalami demam, batuk, dan sakit kepala sejak kemarin...",
+            "Gejala atau keluhan",
+            placeholder="Contoh: Saya mengalami demam, batuk, dan sakit kepala...",
             height=150
         )
 
         duration = st.text_input(
-            "Sudah berapa lama gejala dirasakan?",
+            "Lama gejala dirasakan",
             placeholder="Contoh: 2 hari"
         )
 
@@ -634,7 +319,7 @@ elif st.session_state.selected_page == "Medical Triage":
         )
 
         uploaded_image = st.file_uploader(
-            "Unggah foto jika relevan (opsional)",
+            "Unggah gambar (opsional)",
             type=["jpg", "jpeg", "png"]
         )
 
@@ -643,7 +328,7 @@ elif st.session_state.selected_page == "Medical Triage":
             use_container_width=True
         )
 
-    if uploaded_image:
+    if uploaded_image is not None:
         st.image(
             uploaded_image,
             caption="Gambar yang diunggah",
@@ -654,62 +339,40 @@ elif st.session_state.selected_page == "Medical Triage":
 
         if not symptoms.strip():
 
-            st.warning(
-                "Silakan masukkan gejala terlebih dahulu."
-            )
+            st.warning("Silakan masukkan keluhan terlebih dahulu.")
 
         else:
 
             prompt = f"""
 {MEDICAL_SAFETY}
 
-Bantu pengguna memahami keluhannya secara informatif dan berhati-hati.
+Bantu pengguna memahami keluhan berikut.
 
-Data pengguna:
-- Usia: {age} tahun
-- Keluhan: {symptoms}
-- Durasi: {duration if duration else "Tidak disebutkan"}
+Usia: {age}
+Gejala: {symptoms}
+Durasi: {duration if duration else "Tidak disebutkan"}
 
-Jika ada gambar, jelaskan hanya hal yang tampak secara visual.
+Jika terdapat gambar, jelaskan hanya hal yang terlihat.
 Jangan memastikan penyakit berdasarkan gambar.
 
-Susun jawaban:
+Buat jawaban dengan format:
 
 ## 1. Ringkasan Keluhan
-Rangkum informasi pengguna.
-
 ## 2. Kemungkinan Penjelasan
-Berikan beberapa kemungkinan umum jika relevan.
-Tegaskan bahwa ini bukan diagnosis.
-
 ## 3. Tingkat Urgensi
-Jelaskan apakah keluhan memerlukan:
-- Pertolongan darurat
-- Pemeriksaan dokter secepatnya
-- Konsultasi medis terjadwal
-- Pemantauan mandiri dengan hati-hati
-
-Jangan menetapkan tingkat urgensi secara pasti jika data tidak cukup.
-
 ## 4. Hal yang Dapat Dilakukan
-Berikan saran umum yang aman.
-
 ## 5. Kapan Harus ke Dokter
-Jelaskan tanda bahaya yang perlu diperhatikan.
-
 ## 6. Pertanyaan Lanjutan
-Berikan pertanyaan yang dapat membantu memperjelas keluhan.
+
+Jangan memberikan diagnosis pasti.
+Jika informasi tidak cukup, jelaskan keterbatasannya.
 """
 
-            with st.spinner(
-                "MediCess AI sedang menganalisis keluhan..."
-            ):
-
-                generate_ai(
-                    prompt,
-                    uploaded_image,
-                    "Medical Triage"
-                )
+            generate_ai(
+                prompt,
+                uploaded_image,
+                "Medical Triage"
+            )
 
 
 # =====================================================
@@ -722,20 +385,22 @@ elif st.session_state.selected_page == "Drug Safety":
 
     st.write(
         "Dapatkan informasi umum mengenai obat, alergi, "
-        "dan hal yang perlu dikonsultasikan kepada apoteker."
+        "dan potensi interaksi yang perlu dikonsultasikan."
     )
+
+    st.divider()
 
     with st.form("drug_form"):
 
         medicines = st.text_area(
-            "Nama obat yang sedang digunakan",
+            "Nama obat",
             placeholder="Contoh: Paracetamol, Amoxicillin...",
             height=120
         )
 
         allergies = st.text_area(
-            "Apakah memiliki alergi obat?",
-            placeholder="Tuliskan alergi yang diketahui."
+            "Riwayat alergi obat",
+            placeholder="Contoh: Alergi terhadap obat tertentu."
         )
 
         conditions = st.text_area(
@@ -743,25 +408,23 @@ elif st.session_state.selected_page == "Drug Safety":
             placeholder="Contoh: Asma, gangguan ginjal, sedang hamil..."
         )
 
-        drug_submitted = st.form_submit_button(
+        submitted = st.form_submit_button(
             "Periksa Informasi Obat",
             use_container_width=True
         )
 
-    if drug_submitted:
+    if submitted:
 
         if not medicines.strip():
 
-            st.warning(
-                "Masukkan nama obat terlebih dahulu."
-            )
+            st.warning("Masukkan nama obat terlebih dahulu.")
 
         else:
 
             prompt = f"""
 {MEDICAL_SAFETY}
 
-Pengguna meminta informasi umum mengenai obat.
+Berikan informasi umum mengenai obat berikut.
 
 Daftar obat:
 {medicines}
@@ -772,38 +435,25 @@ Riwayat alergi:
 Kondisi kesehatan:
 {conditions if conditions else "Tidak disebutkan"}
 
-Berikan jawaban:
+Buat jawaban dengan format:
 
 ## 1. Informasi Umum Obat
-Jelaskan kegunaan umum masing-masing obat jika diketahui.
+## 2. Kegunaan Obat
+## 3. Efek Samping yang Perlu Diperhatikan
+## 4. Potensi Interaksi
+## 5. Perhatian terhadap Alergi
+## 6. Saran Keamanan
 
-## 2. Hal yang Perlu Diperhatikan
-Jelaskan efek samping umum dan peringatan yang relevan.
-
-## 3. Potensi Interaksi
-Sebutkan potensi interaksi hanya jika memiliki dasar informasi memadai.
-Jika tidak yakin, katakan bahwa interaksi perlu diverifikasi oleh apoteker atau dokter.
 Jangan mengklaim telah memeriksa database obat resmi.
-
-## 4. Alergi dan Kondisi Khusus
-Jelaskan hal yang perlu diperhatikan.
-
-## 5. Saran Keamanan
-Sarankan pengguna memeriksa kemasan dan berkonsultasi dengan apoteker/dokter.
-
-Jangan memberikan dosis personal.
-Jangan menyarankan menghentikan obat resep sendiri.
-Jangan menyatakan kombinasi obat pasti aman hanya berdasarkan tebakan.
+Jangan mengarang interaksi obat.
+Jika tidak yakin, sarankan verifikasi kepada apoteker atau dokter.
+Jangan memberikan dosis personal atau menyarankan menghentikan obat resep.
 """
 
-            with st.spinner(
-                "Memeriksa informasi obat..."
-            ):
-
-                generate_ai(
-                    prompt,
-                    feature_name="Drug Safety"
-                )
+            generate_ai(
+                prompt,
+                feature_name="Drug Safety"
+            )
 
 
 # =====================================================
@@ -815,13 +465,15 @@ elif st.session_state.selected_page == "Recovery Planner":
     st.title("🌿 Recovery Planner")
 
     st.write(
-        "Buat rencana pemulihan dan kebiasaan sehat secara umum."
+        "Buat rencana kebiasaan sehat dan pemulihan secara umum."
     )
+
+    st.divider()
 
     with st.form("recovery_form"):
 
-        recovery_condition = st.text_area(
-            "Kondisi atau keluhan yang sedang dialami",
+        condition = st.text_area(
+            "Kondisi yang sedang dialami",
             placeholder="Contoh: Sedang dalam masa pemulihan setelah flu..."
         )
 
@@ -835,7 +487,7 @@ elif st.session_state.selected_page == "Recovery Planner":
         )
 
         sleep = st.selectbox(
-            "Durasi tidur rata-rata",
+            "Durasi tidur",
             [
                 "Kurang dari 5 jam",
                 "5–6 jam",
@@ -851,32 +503,30 @@ elif st.session_state.selected_page == "Recovery Planner":
                 "Meningkatkan kualitas tidur",
                 "Menjaga pola makan",
                 "Meningkatkan kebugaran",
-                "Menjaga kesehatan secara umum"
+                "Menjaga kesehatan umum"
             ]
         )
 
-        recovery_submitted = st.form_submit_button(
+        submitted = st.form_submit_button(
             "Buat Rencana",
             use_container_width=True
         )
 
-    if recovery_submitted:
+    if submitted:
 
-        if not recovery_condition.strip():
+        if not condition.strip():
 
-            st.warning(
-                "Silakan jelaskan kondisi terlebih dahulu."
-            )
+            st.warning("Silakan jelaskan kondisi terlebih dahulu.")
 
         else:
 
             prompt = f"""
 {MEDICAL_SAFETY}
 
-Buat rencana pemulihan dan kebiasaan sehat yang bersifat umum.
+Buat rencana kebiasaan sehat dan pemulihan umum.
 
 Kondisi:
-{recovery_condition}
+{condition}
 
 Aktivitas:
 {activity}
@@ -887,11 +537,10 @@ Durasi tidur:
 Fokus:
 {goal}
 
-Susun jawaban:
+Susun jawaban dengan format:
 
 ## 1. Ringkasan Kondisi
-## 2. Rencana Harian
-Buat tabel sederhana pagi, siang, sore, dan malam.
+## 2. Rencana Aktivitas Harian
 ## 3. Pola Istirahat
 ## 4. Saran Makan dan Minum
 ## 5. Aktivitas yang Perlu Diperhatikan
@@ -899,17 +548,12 @@ Buat tabel sederhana pagi, siang, sore, dan malam.
 ## 7. Catatan Penting
 
 Jangan memberikan terapi khusus atau menjanjikan kesembuhan.
-Jika kondisi membutuhkan pengawasan medis, sarankan konsultasi dokter.
 """
 
-            with st.spinner(
-                "Menyusun rencana..."
-            ):
-
-                generate_ai(
-                    prompt,
-                    feature_name="Recovery Planner"
-                )
+            generate_ai(
+                prompt,
+                feature_name="Recovery Planner"
+            )
 
 
 # =====================================================
@@ -921,14 +565,14 @@ elif st.session_state.selected_page == "History":
     st.title("📚 Riwayat Analisis")
 
     st.write(
-        "Riwayat analisis selama sesi aplikasi ini."
+        "Berikut adalah riwayat analisis selama sesi aplikasi berlangsung."
     )
+
+    st.divider()
 
     if not st.session_state.history:
 
-        st.info(
-            "Belum ada riwayat analisis."
-        )
+        st.info("Belum ada riwayat analisis.")
 
     else:
 
@@ -937,16 +581,16 @@ elif st.session_state.selected_page == "History":
             st.session_state.history = []
             st.rerun()
 
-        for item in st.session_state.history:
+        for index, item in enumerate(st.session_state.history):
 
             with st.expander(
-                f"{item['feature']} — {item['time']}"
+                f"{item['feature']} - {item['time']}"
             ):
 
-                st.markdown("**Permintaan:**")
+                st.subheader("Permintaan")
                 st.write(item["prompt"])
 
-                st.markdown("**Hasil AI:**")
+                st.subheader("Hasil Analisis")
                 st.markdown(item["response"])
 
 
@@ -958,37 +602,64 @@ elif st.session_state.selected_page == "About":
 
     st.title("ℹ️ Tentang MediCess AI")
 
+    st.divider()
+
+    st.header("MediCess AI")
+
+    st.write(
+        "MediCess AI merupakan aplikasi asisten informasi kesehatan "
+        "berbasis Artificial Intelligence yang dikembangkan menggunakan "
+        "Python, Streamlit, dan Google Gemini."
+    )
+
+    st.subheader("Fitur Aplikasi")
+
     st.markdown("""
-    ## MediCess AI
+    1. **Medical Triage**
 
-    MediCess AI merupakan aplikasi asisten informasi kesehatan
-    berbasis Artificial Intelligence yang dikembangkan menggunakan
-    Streamlit dan Google Gemini.
+       Membantu memahami keluhan dan informasi tingkat urgensi gejala.
 
-    ### Fitur Utama
+    2. **Drug Safety**
 
-    - **Medical Triage:** Membantu memahami keluhan dan informasi urgensi.
-    - **Drug Safety:** Memberikan informasi umum terkait obat dan keamanannya.
-    - **Recovery Planner:** Membantu menyusun rencana kebiasaan sehat.
-    - **History:** Menampilkan riwayat analisis selama sesi aplikasi.
+       Memberikan informasi umum mengenai obat dan hal yang perlu diperhatikan.
 
-    ### Teknologi
+    3. **Recovery Planner**
 
+       Membantu menyusun rencana kebiasaan sehat dan pemulihan umum.
+
+    4. **History**
+
+       Menampilkan riwayat analisis selama sesi aplikasi.
+    """)
+
+    st.subheader("Teknologi yang Digunakan")
+
+    st.markdown("""
     - Python
     - Streamlit
     - Google Gemini API
     - Pillow
-
-    ### Batasan Sistem
-
-    MediCess AI bukan alat diagnosis medis, bukan pengganti dokter,
-    dan tidak menjamin ketepatan informasi interaksi obat.
-    Informasi penting harus diverifikasi melalui tenaga kesehatan profesional.
     """)
+
+    st.subheader("Disclaimer")
+
+    st.warning(
+        "MediCess AI bukan alat diagnosis medis dan tidak menggantikan "
+        "pemeriksaan dokter. Informasi obat harus diverifikasi oleh "
+        "dokter atau apoteker."
+    )
 
 
 # =====================================================
 # FOOTER
 # =====================================================
 
-show_footer()
+st.divider()
+
+st.caption("🏥 MediCess AI | Intelligent Healthcare Assistant")
+
+st.caption("Powered by Google Gemini")
+
+st.caption(
+    "© 2026 MediCess AI. Informasi AI bukan pengganti konsultasi medis."
+)
