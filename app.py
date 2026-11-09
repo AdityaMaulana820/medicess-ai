@@ -20,12 +20,21 @@ st.set_page_config(
 st.title("🩺 MediCess AI")
 st.caption("Asisten edukasi kesehatan berbasis Machine Learning")
 
+
+# ==========================================
+# SESSION STATE
+# ==========================================
+
 if "history" not in st.session_state:
     st.session_state.history = []
 
 if "page" not in st.session_state:
     st.session_state.page = "Dashboard"
 
+
+# ==========================================
+# FUNGSI BANTUAN
+# ==========================================
 
 def save_history(feature, prompt, response):
     st.session_state.history.insert(
@@ -47,11 +56,20 @@ def show_disclaimer():
     )
 
 
+def show_error(error):
+    st.error(
+        f"Terjadi kesalahan: {type(error).__name__}: {error}"
+    )
+    with st.expander("Lihat detail error untuk perbaikan"):
+        st.exception(error)
+
+
 # ==========================================
 # SIDEBAR NAVIGASI
 # ==========================================
 
 with st.sidebar:
+
     st.title("🩺 MediCess AI")
     st.caption("Health Education Assistant")
 
@@ -80,6 +98,7 @@ with st.sidebar:
 if selected_page == "Dashboard":
 
     st.header("Dashboard")
+
     st.write(
         "Selamat datang di MediCess AI. "
         "Gunakan fitur berikut untuk mendapatkan informasi "
@@ -107,26 +126,32 @@ if selected_page == "Dashboard":
     col1, col2 = st.columns(2)
 
     with col1:
+
         st.markdown("### 🔎 Medical Triage")
+
         st.write(
             "Mengklasifikasikan deskripsi gejala berdasarkan "
             "pola teks dari dataset menggunakan Machine Learning."
         )
 
         st.markdown("### 💊 Drug Safety")
+
         st.write(
             "Memberikan informasi dasar mengenai beberapa obat "
             "dan catatan kehati-hatian."
         )
 
     with col2:
+
         st.markdown("### 🌱 Recovery Planner")
+
         st.write(
             "Menyusun rekomendasi kebiasaan sehat berdasarkan "
             "aktivitas, tidur, dan tujuan pengguna."
         )
 
         st.markdown("### 📋 History")
+
         st.write(
             "Melihat riwayat penggunaan fitur selama sesi aplikasi."
         )
@@ -134,6 +159,7 @@ if selected_page == "Dashboard":
     st.divider()
 
     st.subheader("Penting untuk Diketahui")
+
     st.warning(
         "Jika mengalami nyeri dada berat, sesak napas berat, "
         "kejang, penurunan kesadaran, atau kondisi darurat lainnya, "
@@ -150,6 +176,7 @@ if selected_page == "Dashboard":
 elif selected_page == "Medical Triage":
 
     st.header("🔎 Medical Triage")
+
     st.write(
         "Masukkan deskripsi gejala untuk mendapatkan hasil "
         "klasifikasi berdasarkan model Machine Learning."
@@ -157,7 +184,8 @@ elif selected_page == "Medical Triage":
 
     st.info(
         "Dataset model menggunakan bahasa Inggris. "
-        "Untuk eksperimen ini, masukkan deskripsi gejala dalam bahasa Inggris."
+        "Untuk eksperimen ini, masukkan deskripsi gejala "
+        "dalam bahasa Inggris."
     )
 
     with st.form("triage_form"):
@@ -174,12 +202,14 @@ elif selected_page == "Medical Triage":
         col1, col2 = st.columns(2)
 
         with col1:
+
             duration = st.text_input(
                 "Sudah berapa lama mengalami gejala?",
                 placeholder="Contoh: 2 hari"
             )
 
         with col2:
+
             age = st.number_input(
                 "Usia",
                 min_value=1,
@@ -195,19 +225,32 @@ elif selected_page == "Medical Triage":
     if submitted:
 
         if not symptoms.strip():
-            st.error("Silakan masukkan deskripsi gejala terlebih dahulu.")
+
+            st.error(
+                "Silakan masukkan deskripsi gejala terlebih dahulu."
+            )
 
         else:
+
             try:
-                with st.spinner("Model sedang menganalisis teks..."):
+
+                with st.spinner(
+                    "Model sedang menganalisis teks..."
+                ):
+
                     result = predict_symptom(symptoms)
 
                 prediction = result["prediction"]
 
-                st.success("Klasifikasi berhasil dilakukan.")
+                st.success(
+                    "Klasifikasi berhasil dilakukan."
+                )
 
                 st.subheader("Hasil Klasifikasi")
-                st.info(f"Kategori yang diprediksi: **{prediction}**")
+
+                st.info(
+                    f"Kategori yang diprediksi: **{prediction}**"
+                )
 
                 st.caption(
                     f"Usia: {age} tahun | Durasi gejala: "
@@ -227,16 +270,21 @@ elif selected_page == "Medical Triage":
                 )
 
             except FileNotFoundError as error:
+
                 st.error(str(error))
+
                 st.info(
                     "Pastikan file model tersedia di "
-                    "folder model/symptom_classifier.pkl pada repository."
+                    "folder model/symptom_classifier.pkl "
+                    "pada repository."
                 )
 
             except Exception as error:
-                st.error(f"Terjadi kesalahan saat klasifikasi: {error}")
+
+                show_error(error)
 
     st.divider()
+
     show_disclaimer()
 
 
@@ -247,6 +295,7 @@ elif selected_page == "Medical Triage":
 elif selected_page == "Drug Safety":
 
     st.header("💊 Drug Safety")
+
     st.write(
         "Fitur ini memberikan informasi dasar untuk beberapa "
         "obat yang tersedia dalam referensi lokal aplikasi."
@@ -280,10 +329,13 @@ elif selected_page == "Drug Safety":
     if submitted:
 
         if not medicines.strip():
+
             st.error("Masukkan minimal satu nama obat.")
 
         else:
+
             try:
+
                 medicine_list = [
                     item.strip()
                     for item in medicines.replace(",", "\n").splitlines()
@@ -296,29 +348,41 @@ elif selected_page == "Drug Safety":
                     conditions
                 )
 
-                st.subheader("Hasil Pemeriksaan Informasi")
+                st.subheader(
+                    "Hasil Pemeriksaan Informasi"
+                )
 
                 for item in result.get("results", []):
 
                     if isinstance(item, dict):
+
                         st.markdown(
                             f"### {item.get('name', 'Informasi Obat')}"
                         )
 
                         for key, value in item.items():
+
                             if key != "name":
-                                st.write(f"**{key.replace('_', ' ').title()}:** {value}")
+
+                                st.write(
+                                    f"**{key.replace('_', ' ').title()}:** "
+                                    f"{value}"
+                                )
 
                     else:
+
                         st.write(item)
 
                 for warning in result.get("warnings", []):
+
                     st.warning(warning)
 
                 if result.get("interaction_note"):
+
                     st.info(result["interaction_note"])
 
                 if result.get("disclaimer"):
+
                     st.caption(result["disclaimer"])
 
                 save_history(
@@ -328,7 +392,8 @@ elif selected_page == "Drug Safety":
                 )
 
             except Exception as error:
-                st.error(f"Terjadi kesalahan: {error}")
+
+                show_error(error)
 
     st.divider()
 
@@ -349,6 +414,7 @@ elif selected_page == "Drug Safety":
 elif selected_page == "Recovery Planner":
 
     st.header("🌱 Recovery Planner")
+
     st.write(
         "Buat panduan kebiasaan sehat berdasarkan kondisi "
         "dan aktivitas sehari-hari."
@@ -399,10 +465,13 @@ elif selected_page == "Recovery Planner":
     if submitted:
 
         if not condition.strip():
+
             st.error("Silakan isi kondisi saat ini.")
 
         else:
+
             try:
+
                 result = create_recovery_plan(
                     condition,
                     activity,
@@ -410,9 +479,13 @@ elif selected_page == "Recovery Planner":
                     goal
                 )
 
-                st.success("Recovery Plan berhasil dibuat.")
+                st.success(
+                    "Recovery Plan berhasil dibuat."
+                )
 
-                st.subheader("📋 Rencana Kebiasaan Sehat")
+                st.subheader(
+                    "📋 Rencana Kebiasaan Sehat"
+                )
 
                 st.markdown("### Kondisi")
                 st.write(result["condition"])
@@ -430,6 +503,7 @@ elif selected_page == "Recovery Planner":
                 st.write(result["goal"])
 
                 st.warning(result["warning"])
+
                 st.caption(result["disclaimer"])
 
                 save_history(
@@ -439,9 +513,11 @@ elif selected_page == "Recovery Planner":
                 )
 
             except Exception as error:
-                st.error(f"Terjadi kesalahan: {error}")
+
+                show_error(error)
 
     st.divider()
+
     show_disclaimer()
 
 
@@ -452,26 +528,36 @@ elif selected_page == "Recovery Planner":
 elif selected_page == "History":
 
     st.header("📋 History")
-    st.write("Riwayat penggunaan fitur selama sesi aplikasi ini.")
+
+    st.write(
+        "Riwayat penggunaan fitur selama sesi aplikasi ini."
+    )
 
     history = st.session_state.history
 
     if not history:
+
         st.info("Belum ada riwayat penggunaan.")
 
     else:
 
-        st.metric("Total Aktivitas", len(history))
+        st.metric(
+            "Total Aktivitas",
+            len(history)
+        )
 
         if st.button("Hapus Semua Riwayat"):
+
             st.session_state.history = []
+
             st.rerun()
 
-        for index, item in enumerate(history):
+        for item in history:
 
             with st.expander(
                 f"{item['feature']} — {item['time']}"
             ):
+
                 st.write("**Input:**")
                 st.write(item["prompt"])
 
@@ -489,8 +575,8 @@ elif selected_page == "About":
 
     st.write(
         "MediCess AI merupakan aplikasi edukasi kesehatan "
-        "yang menggabungkan klasifikasi teks berbasis Machine Learning "
-        "dengan referensi informasi kesehatan lokal."
+        "yang menggabungkan klasifikasi teks berbasis "
+        "Machine Learning dengan referensi informasi kesehatan lokal."
     )
 
     st.subheader("Teknologi yang Digunakan")
@@ -505,6 +591,7 @@ elif selected_page == "About":
     ]
 
     for technology in technologies:
+
         st.write(f"• {technology}")
 
     st.subheader("Dataset")
@@ -515,21 +602,25 @@ elif selected_page == "About":
     )
 
     st.markdown(
-        "[Lihat Dataset Symptom2Disease](https://huggingface.co/datasets/NeuronZero/Symptom2Disease)"
+        "[Lihat Dataset Symptom2Disease]"
+        "(https://huggingface.co/datasets/NeuronZero/Symptom2Disease)"
     )
 
     st.subheader("Tujuan Pengembangan")
 
     st.write(
-        "Mengembangkan prototipe aplikasi edukasi kesehatan berbasis "
-        "Machine Learning yang dapat diakses melalui browser tanpa "
-        "memerlukan API Key layanan AI eksternal."
+        "Mengembangkan prototipe aplikasi edukasi kesehatan "
+        "berbasis Machine Learning yang dapat diakses melalui browser "
+        "tanpa memerlukan API Key layanan AI eksternal."
     )
 
     st.warning(
-        "MediCess AI masih merupakan prototipe penelitian dan "
-        "belum divalidasi untuk penggunaan klinis."
+        "MediCess AI masih merupakan prototipe penelitian "
+        "dan belum divalidasi untuk penggunaan klinis."
     )
 
     st.divider()
-    st.caption("MediCess AI — Machine Learning Health Education Prototype")
+
+    st.caption(
+        "MediCess AI — Machine Learning Health Education Prototype"
+    )
